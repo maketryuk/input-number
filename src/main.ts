@@ -74,10 +74,10 @@ export default class LInputNumber {
 			onChange: typeof userConfig.onChange === 'function' ? userConfig.onChange : this.config.onChange,
 			onInput: typeof userConfig.onInput === 'function' ? userConfig.onInput : this.config.onInput,
 			format: {
-				decimals: typeof userConfig.format?.decimals === 'number' ? userConfig.format?.decimals : this.config.format?.decimals,
-				thousandSeparator: typeof userConfig.format?.thousandSeparator === 'string' ? userConfig.format?.thousandSeparator : this.config.format?.thousandSeparator,
-				decimalsSeparator: typeof userConfig.format?.decimalsSeparator === 'string' ? userConfig.format?.decimalsSeparator : this.config.format?.decimalsSeparator,
-				removeTrailingDecimals: typeof userConfig.format?.removeTrailingDecimals === 'boolean' ? userConfig.format?.removeTrailingDecimals : this.config.format?.removeTrailingDecimals,
+				decimals: typeof userConfig.format?.decimals === 'number' ? userConfig.format?.decimals : this.config.format?.decimals as number,
+				thousandSeparator: typeof userConfig.format?.thousandSeparator === 'string' ? userConfig.format?.thousandSeparator : this.config.format?.thousandSeparator as string,
+				decimalsSeparator: typeof userConfig.format?.decimalsSeparator === 'string' ? userConfig.format?.decimalsSeparator : this.config.format?.decimalsSeparator as string,
+				removeTrailingDecimals: typeof userConfig.format?.removeTrailingDecimals === 'boolean' ? userConfig.format?.removeTrailingDecimals : this.config.format?.removeTrailingDecimals as boolean,
 			}
 		}
 	};
@@ -148,66 +148,93 @@ export default class LInputNumber {
 	private onInputElement(event: Event) {
 		const target: HTMLInputElement = event.target as HTMLInputElement;
 		let value: string = target.value;
+		const cursorPosition: number = target.selectionStart || 0;
 
 		if (!value) return;
 
-		const decimalsSeparator = this.config.format?.decimalsSeparator;
-		const thousandSeparator = this.config.format?.thousandSeparator;
-		const decimals = this.config.format?.decimals;
-		const removeTrailingDecimals = this.config.format?.removeTrailingDecimals;
+		let cleanedValue: string = value.replace(new RegExp(`[^0-9.${this.config.format?.decimalsSeparator}${this.config.format?.thousandSeparator} ]`, 'g'), '');
 
-		const regex = new RegExp('[^0-9' + decimalsSeparator + thousandSeparator + '.]', 'g');
-		value = value.replace(regex, '');
-
-		if (decimals === 0) {
-			value = this.format?.to(this.format?.from(value.replace(/\D/g, '')) as number) as string;
-			target.value = value;
-			if (this.config.onInput) {
-				this.config.onInput({value: this.format?.from(value.replace(/\D/g, '')) as number, maskedValue: value});
-			}
-			return;
+		if (this.config.format?.thousandSeparator !== '.') {
+			cleanedValue = cleanedValue.replace(/\./g, this.config.format?.decimalsSeparator as string);
 		}
 
-		if (thousandSeparator !== '.') {
-			value = value.replace(/\./g, decimalsSeparator as string);
+		const regex = new RegExp(`(\\${this.config.format?.decimalsSeparator})(?=.*\\${this.config.format?.decimalsSeparator})`, 'g');
+		cleanedValue = cleanedValue.replace(regex, '');
+
+		const unmaskedValue: number | boolean | undefined = this.format?.from(cleanedValue);
+		const parts: string[] = cleanedValue.split(this.config.format?.decimalsSeparator as string);
+
+		const thousandsPart: string = parts?.[0];
+		const decimalsPart: string = parts?.[1];
+
+		const unmaskedThousands: number = this.format?.from(thousandsPart) as number;
+
+		const maskedThousands = (str: number): string => {
+			let result: string = this.format?.to(str as number) as string;
+
+
+			if (this.config.format?.removeTrailingDecimals) {
+				result = this.removedTrailingDecimals(result);
+			}
+
+			return result;
 		}
 
-		const index = value.indexOf(decimalsSeparator as string);
-		if (index !== -1) {
-			value = value.substring(0, index + 1) + value.substring(index + 1).replace(new RegExp(decimalsSeparator as string, 'g'), '');
-		}
-
-		const parts = value.split(decimalsSeparator as string);
-		const decimalPart = parts[1];
-
-		if (value.endsWith(decimalsSeparator as string)) {
-			target.value = value;
-			if (this.config.onInput) {
-				this.config.onInput({value: this.value, maskedValue: value});
-			}
-			return;
-		} else if (decimalPart) {
-			if (decimalPart.length > (decimals as number)) {
-				value = this.format?.to(this.format?.from(value) as number) as string;
-
-				if (removeTrailingDecimals) {
-					this.removedTrailingDecimals(value);
-				}
-			}
+		if (decimalsPart !== undefined) {
+			cleanedValue = maskedThousands(unmaskedThousands) + this.config.format?.decimalsSeparator + decimalsPart;
+			value = cleanedValue;
 		} else {
-			value = this.format?.to(this.format?.from(value) as number) as string;
+			cleanedValue = maskedThousands(unmaskedThousands);
+			value = cleanedValue;
+		}
 
-			if (removeTrailingDecimals) {
+		if (cleanedValue.endsWith(this.config.format?.decimalsSeparator as string)) {
+			value = cleanedValue;
+
+			target.value = value;
+			target.setSelectionRange(cursorPosition, cursorPosition);
+
+			if (this.config.onInput) {
+				this.config.onInput({value: unmaskedValue as number, maskedValue: value});
+			}
+			return;
+		}
+
+		if (this.config.format?.decimals === 0 && typeof unmaskedValue === "number") {
+			value = this.format?.to(unmaskedValue as number) as string;
+
+			target.value = value;
+			target.setSelectionRange(cursorPosition, cursorPosition);
+
+			if (this.config.onInput) {
+				this.config.onInput({value: unmaskedValue, maskedValue: value});
+			}
+			return;
+		}
+
+		if (typeof this.config.format?.decimals === 'number' && decimalsPart && decimalsPart.length > this.config.format?.decimals) {
+			value = this.format?.to(unmaskedValue as number) as string;
+
+			if (this.config.format?.removeTrailingDecimals) {
 				value = this.removedTrailingDecimals(value);
 			}
+
+			target.value = value;
+			target.setSelectionRange(cursorPosition, cursorPosition);
+
+			if (this.config.onInput) {
+				this.config.onInput({value: unmaskedValue as number, maskedValue: value});
+			}
+			return;
 		}
 
 		target.value = value;
+		target.setSelectionRange(cursorPosition, cursorPosition);
+
 		if (this.config.onInput) {
-			this.config.onInput({value: this.value, maskedValue: value});
+			this.config.onInput({value: unmaskedValue as number, maskedValue: value});
 		}
 	}
-
 
 	setValue(value: number) {
 		this.value = value;
@@ -246,3 +273,12 @@ export default class LInputNumber {
 		return value;
 	}
 }
+
+new LInputNumber(document.querySelector('input'), {
+	min: 0,
+	max: 100000000,
+	defaultValue: 1000000,
+	format: {
+		decimals: 2,
+	}
+});
