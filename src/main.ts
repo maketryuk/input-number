@@ -26,7 +26,7 @@ interface IwNumb {
 export default class LInputNumber {
 	private config: IConfig = {
 		min: 0,
-		max: 10000,
+		max: 100,
 		defaultValue: 0,
 		format: {
 			decimals: 0,
