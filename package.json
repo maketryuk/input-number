@@ -1,8 +1,10 @@
 {
-	"name": "l-input-number",
-	"private": true,
+	"name": "@maketryuk/l-input-number",
 	"version": "0.0.0",
 	"type": "module",
+	"files": [
+		"dist"
+	],
 	"main": "./dist/l-input-number.umd.cjs",
 	"module": "./dist/l-input-number.js",
 	"exports": {

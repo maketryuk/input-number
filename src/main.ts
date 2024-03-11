@@ -146,95 +146,146 @@ export default class LInputNumber {
 	};
 
 	private onInputElement(event: Event) {
-		const target: HTMLInputElement = event.target as HTMLInputElement;
-		let value: string = target.value;
-		const cursorPosition: number = target.selectionStart || 0;
+		const handleInput = (target: HTMLInputElement, inputValue: string) => {
+			let value: string = inputValue;
+			const cursorPosition: number = target.selectionStart || 0;
 
-		if (!value) return;
+			if (!value) return;
 
-		let cleanedValue: string = value.replace(new RegExp(`[^0-9.${this.config.format?.decimalsSeparator}${this.config.format?.thousandSeparator} ]`, 'g'), '');
+			let cleanedValue: string = value.replace(new RegExp(`[^0-9.${this.config.format?.decimalsSeparator}${this.config.format?.thousandSeparator} ]`, 'g'), '');
 
-		if (this.config.format?.thousandSeparator !== '.') {
-			cleanedValue = cleanedValue.replace(/\./g, this.config.format?.decimalsSeparator as string);
-		}
-
-		const regex = new RegExp(`(\\${this.config.format?.decimalsSeparator})(?=.*\\${this.config.format?.decimalsSeparator})`, 'g');
-		cleanedValue = cleanedValue.replace(regex, '');
-
-		const unmaskedValue: number | boolean | undefined = this.format?.from(cleanedValue);
-		const parts: string[] = cleanedValue.split(this.config.format?.decimalsSeparator as string);
-
-		const thousandsPart: string = parts?.[0];
-		const decimalsPart: string = parts?.[1];
-
-		const unmaskedThousands: number = this.format?.from(thousandsPart) as number;
-
-		const maskedThousands = (str: number): string => {
-			let result: string = this.format?.to(str as number) as string;
-
-
-			if (this.config.format?.removeTrailingDecimals) {
-				result = this.removedTrailingDecimals(result);
+			if (this.config.format?.thousandSeparator !== '.') {
+				cleanedValue = cleanedValue.replace(/\./g, this.config.format?.decimalsSeparator as string);
 			}
 
-			return result;
-		}
+			const regex = new RegExp(`(\\${this.config.format?.decimalsSeparator})(?=.*\\${this.config.format?.decimalsSeparator})`, 'g');
+			cleanedValue = cleanedValue.replace(regex, '');
 
-		if (decimalsPart !== undefined) {
-			cleanedValue = maskedThousands(unmaskedThousands) + this.config.format?.decimalsSeparator + decimalsPart;
-			value = cleanedValue;
-		} else {
-			cleanedValue = maskedThousands(unmaskedThousands);
-			value = cleanedValue;
-		}
+			const isEmptyValue = !cleanedValue.replace(/\D/g, '');
 
-		if (cleanedValue.endsWith(this.config.format?.decimalsSeparator as string)) {
-			value = cleanedValue;
+			if (isEmptyValue) {
+				if (this.config.format?.removeTrailingDecimals) {
+					cleanedValue = this.removedTrailingDecimals(this.format?.to(this.config?.min as number) as string);
+				} else {
+					cleanedValue = this.format?.to(this.config?.min as number) as string;
+				}
+			}
+
+			const unmaskedValue: number | boolean | undefined = this.format?.from(cleanedValue);
+			const parts: string[] = cleanedValue.split(this.config.format?.decimalsSeparator as string);
+
+			const thousandsPart: string = parts[0] ? parts[0] : (this.format?.to(this.config.min as number) as string).split(this.config.format?.decimalsSeparator as string)[0];
+			const decimalsPart: string = parts?.[1];
+
+			const unmaskedThousands: number = this.format?.from(thousandsPart) as number;
+
+			const maskedThousands = (str: number): string => {
+				let result: string = this.format?.to(str as number) as string;
+
+				if (this.config.format?.removeTrailingDecimals) {
+					result = this.removedTrailingDecimals(result);
+				}
+
+				return result;
+			}
+
+			if (decimalsPart !== undefined) {
+				cleanedValue = maskedThousands(unmaskedThousands) + this.config.format?.decimalsSeparator + decimalsPart;
+				value = cleanedValue;
+			} else {
+				cleanedValue = maskedThousands(unmaskedThousands);
+				value = cleanedValue;
+			}
+
+			if (cleanedValue.endsWith(this.config.format?.decimalsSeparator as string)) {
+				value = cleanedValue;
+
+				target.value = value;
+				target.setSelectionRange(cursorPosition, cursorPosition);
+
+				if (this.config.onInput) {
+					this.config.onInput({ value: unmaskedValue as number, maskedValue: value });
+				}
+				return;
+			}
+
+			if (this.config.format?.decimals === 0 && typeof unmaskedValue === "number") {
+				value = this.format?.to(unmaskedValue as number) as string;
+
+				target.value = value;
+				target.setSelectionRange(cursorPosition, cursorPosition);
+
+				if (this.config.onInput) {
+					this.config.onInput({ value: unmaskedValue, maskedValue: value });
+				}
+				return;
+			}
+
+			if (typeof this.config.format?.decimals === 'number' && decimalsPart && decimalsPart.length > this.config.format?.decimals) {
+				value = this.format?.to(unmaskedValue as number) as string;
+
+				if (this.config.format?.removeTrailingDecimals) {
+					value = this.removedTrailingDecimals(value);
+				}
+
+				target.value = value;
+				target.setSelectionRange(cursorPosition, cursorPosition);
+
+				if (this.config.onInput) {
+					this.config.onInput({ value: unmaskedValue as number, maskedValue: value });
+				}
+				return;
+			}
 
 			target.value = value;
 			target.setSelectionRange(cursorPosition, cursorPosition);
 
 			if (this.config.onInput) {
-				this.config.onInput({value: unmaskedValue as number, maskedValue: value});
+				this.config.onInput({ value: unmaskedValue as number, maskedValue: value });
 			}
-			return;
+		};
+
+		if (event.type === 'input') {
+			const target: HTMLInputElement = event.target as HTMLInputElement;
+			const value: string = target.value as string;
+
+			handleInput(target, value);
 		}
 
-		if (this.config.format?.decimals === 0 && typeof unmaskedValue === "number") {
-			value = this.format?.to(unmaskedValue as number) as string;
+		if (event.type === 'paste') {
+			event.preventDefault();
 
-			target.value = value;
-			target.setSelectionRange(cursorPosition, cursorPosition);
+			const target: HTMLInputElement = event.target as HTMLInputElement;
 
-			if (this.config.onInput) {
-				this.config.onInput({value: unmaskedValue, maskedValue: value});
+			const clipboardData = (event as ClipboardEvent).clipboardData;
+			const pastedText = clipboardData?.getData('text');
+
+			if (pastedText) {
+				handleInput(target, pastedText);
 			}
-			return;
+		}
+	};
+
+	private removedTrailingDecimals(value: string): string {
+		const result = value;
+		const decimalsSeparator = this.config.format?.decimalsSeparator;
+		const parts = result.split(decimalsSeparator as string);
+
+		if (parts && parts.length === 2) {
+			let integerPart = parts[0];
+			let decimalPart = parts[1];
+
+			decimalPart = decimalPart.replace(/0+$/, '');
+
+			if (decimalPart === '') {
+				return integerPart;
+			}
+
+			return integerPart + decimalsSeparator + decimalPart;
 		}
 
-		if (typeof this.config.format?.decimals === 'number' && decimalsPart && decimalsPart.length > this.config.format?.decimals) {
-			value = this.format?.to(unmaskedValue as number) as string;
-
-			if (this.config.format?.removeTrailingDecimals) {
-				value = this.removedTrailingDecimals(value);
-			}
-
-			target.value = value;
-			target.setSelectionRange(cursorPosition, cursorPosition);
-
-			if (this.config.onInput) {
-				this.config.onInput({value: unmaskedValue as number, maskedValue: value});
-			}
-			return;
-		}
-
-		target.value = value;
-		target.setSelectionRange(cursorPosition, cursorPosition);
-
-		if (this.config.onInput) {
-			this.config.onInput({value: unmaskedValue as number, maskedValue: value});
-		}
-	}
+		return result;
+	};
 
 	setValue(value: number) {
 		this.value = value;
@@ -252,26 +303,6 @@ export default class LInputNumber {
 			this.input.value = this.maskedValue;
 		}
 	};
-
-	private removedTrailingDecimals(value: string): string {
-		const decimalsSeparator = this.config.format?.decimalsSeparator;
-		const parts = value.split(decimalsSeparator as string);
-
-		if (parts.length === 2) {
-			let integerPart = parts[0];
-			let decimalPart = parts[1];
-
-			decimalPart = decimalPart.replace(/0+$/, '');
-
-			if (decimalPart === '') {
-				return integerPart;
-			}
-
-			return integerPart + decimalsSeparator + decimalPart;
-		}
-
-		return value;
-	}
 }
 
 new LInputNumber(document.querySelector('input'), {
