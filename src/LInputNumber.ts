@@ -7,6 +7,7 @@ interface IConfig {
 	max?: number;
 	defaultValue?: number;
 	onChange?: (data: { value: number; maskedValue: string; }) => void;
+	onInput?: (data: { value: number; maskedValue: string; }) => void;
 	format?: IFormat
 }
 
@@ -34,6 +35,9 @@ export default class LInputNumber {
 			removeTrailingDecimals: true
 		},
 		onChange: (): { value: number; maskedValue: string } => {
+			return {value: this.value, maskedValue: this.maskedValue}
+		},
+		onInput: (): {value: number; maskedValue: string} => {
 			return {value: this.value, maskedValue: this.maskedValue}
 		}
 	};
@@ -155,7 +159,11 @@ export default class LInputNumber {
 		value = value.replace(regex, '');
 
 		if (decimals === 0) {
-			target.value = this.format?.to(this.format?.from(value.replace(/\D/g, '')) as number) as string;
+			value = this.format?.to(this.format?.from(value.replace(/\D/g, '')) as number) as string;
+			target.value = value;
+			if (this.config.onInput) {
+				this.config.onInput({value: this.value, maskedValue: value});
+			}
 			return;
 		}
 
@@ -172,6 +180,9 @@ export default class LInputNumber {
 		const decimalPart = parts[1];
 
 		if (value.endsWith(decimalsSeparator as string)) {
+			if (this.config.onInput) {
+				this.config.onInput({value: this.value, maskedValue: value});
+			}
 			return;
 		} else if (decimalPart) {
 			if (decimalPart.length > (decimals as number)) {
@@ -190,6 +201,9 @@ export default class LInputNumber {
 		}
 
 		target.value = value;
+		if (this.config.onInput) {
+			this.config.onInput({value: this.value, maskedValue: value});
+		}
 	}
 
 
