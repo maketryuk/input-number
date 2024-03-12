@@ -14,12 +14,12 @@ import LInputNumber from './LInputNumber';
 
 // Создаем экземпляр класса, передавая элемент input и опциональный объект конфигурации
 new LInputNumber(document.querySelector('input'), {
-	min: 0,
-	max: 100,
-	defaultValue: 100,
-	format: {
-		decimals: 2,
-	}
+    min: 0,
+    max: 100,
+    defaultValue: 100,
+    format: {
+        decimals: 2,
+    }
 });
 ```
 
