@@ -13,7 +13,7 @@ LInputNumber - это класс JavaScript, который обеспечива
 import LInputNumber from './LInputNumber';
 
 // Создаем экземпляр класса, передавая элемент input и опциональный объект конфигурации
-new LInputNumber(document.querySelector('input'), {
+const inputNumber = new LInputNumber(document.querySelector('input'), {
     min: 0,
     max: 100,
     defaultValue: 100,
@@ -21,6 +21,9 @@ new LInputNumber(document.querySelector('input'), {
         decimals: 2,
     }
 });
+
+// Устанавливаем значение при необходимости
+inputNumber.set(50);
 ```
 
 ## Конфигурация
@@ -40,6 +43,6 @@ new LInputNumber(document.querySelector('input'), {
 
 ## Методы
 
-| Опция      | Входные параметры | Описание                              |
-|------------|-------------------|---------------------------------------|
-| `setValue` | value:number      | Устанавливает значение ввода вручную. |
+| Опция | Входные параметры | Описание                              |
+|-------|-------------------|---------------------------------------|
+| `set` | value:number      | Устанавливает значение ввода вручную. |
