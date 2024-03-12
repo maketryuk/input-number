@@ -287,7 +287,7 @@ export default class LInputNumber {
 		return result;
 	};
 
-	setValue(value: number) {
+ 	private setValue(value: number) {
 		this.value = value;
 
 		let formattedValue = this.format ? this.format.to(value) as string : String(value);
@@ -303,13 +303,8 @@ export default class LInputNumber {
 			this.input.value = this.maskedValue;
 		}
 	};
-}
 
-new LInputNumber(document.querySelector('input'), {
-	min: 0,
-	max: 100000000,
-	defaultValue: 1000000,
-	format: {
-		decimals: 2,
+	set(value: number) {
+		this.setValue(value);
 	}
-});
+}
